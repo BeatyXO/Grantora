@@ -32,7 +32,7 @@ export function ReviewActionCard({
         setState({
           status: "success",
           hash: receipt.hash,
-          message: "Consensus review recorded on-chain. Refresh to see the updated scores.",
+          message: "Consensus review accepted. The contract returns the evidence-grounded assessment without post-consensus storage writes.",
         });
         onReviewed?.();
       } else {
@@ -63,9 +63,9 @@ export function ReviewActionCard({
         </h2>
         <p className={prominent ? "mx-auto mt-4 max-w-md text-sm leading-7 text-white/68" : "mt-4 text-sm leading-7 text-white/68"}>
           {loading
-            ? "Loading from the contract…"
+            ? "Loading from the contract..."
             : liveMode
-              ? "This sends `request_review` to the Intelligent Contract and waits for GenLayer consensus to accept it. This can take a few minutes."
+              ? "This sends `request_review` to the Intelligent Contract and waits for GenLayer consensus over fetched public evidence. This can take a few minutes."
               : "Connect a wallet to run a live review. Without one, this runs in demo mode."}
         </p>
         <Button
@@ -74,7 +74,7 @@ export function ReviewActionCard({
           size={prominent ? "lg" : "default"}
           className={prominent ? "mt-8 px-10" : "mt-6"}
         >
-          {isBusy ? "Waiting for consensus…" : "Trigger review"}
+          {isBusy ? "Waiting for consensus..." : "Trigger review"}
         </Button>
       </div>
       <TransactionStateCard state={state} />

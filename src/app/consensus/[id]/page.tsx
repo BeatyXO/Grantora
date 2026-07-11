@@ -36,14 +36,14 @@ export default function ConsensusPage({ params }: { params: Promise<{ id: string
   }, [id]);
 
   useEffect(() => {
-    refresh();
+    void Promise.resolve().then(refresh);
   }, [refresh]);
 
   if (!proposal) {
     return (
       <AppShell eyebrow="Consensus Viewer" title="Proposal not found">
         <p className="text-sm text-white/60">
-          {loading ? "Loading from the contract…" : "No proposal exists with this ID in demo data or on-chain."}
+          {loading ? "Loading from the contract..." : "No proposal exists with this ID in demo data or on-chain."}
         </p>
       </AppShell>
     );

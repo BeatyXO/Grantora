@@ -43,6 +43,11 @@ type ContractConsensus = {
   key_strengths: string[];
   key_risks: string[];
   follow_up_questions: string[];
+  verified_claims: string[];
+  unsupported_claims: string[];
+  contradictions: string[];
+  evidence_urls_used: string[];
+  evidence_quality_score: number;
   recommendation_summary: string;
 };
 
@@ -92,6 +97,11 @@ export function toConsensusRecord(record: ContractConsensus): ConsensusRecord {
     keyStrengths: record.key_strengths ?? [],
     keyRisks: record.key_risks ?? [],
     followUpQuestions: record.follow_up_questions ?? [],
+    verifiedClaims: record.verified_claims ?? [],
+    unsupportedClaims: record.unsupported_claims ?? [],
+    contradictions: record.contradictions ?? [],
+    evidenceUrlsUsed: record.evidence_urls_used ?? [],
+    evidenceQualityScore: record.evidence_quality_score ?? 0,
     recommendationSummary: record.recommendation_summary,
   };
 }

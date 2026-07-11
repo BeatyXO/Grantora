@@ -41,7 +41,7 @@ export function useGrantoraLiveData() {
   }, [isLive]);
 
   useEffect(() => {
-    refresh();
+    void Promise.resolve().then(refresh);
   }, [refresh]);
 
   return { fundingCalls, proposals, loading, error, isLive, usingDemoFallback, refresh };

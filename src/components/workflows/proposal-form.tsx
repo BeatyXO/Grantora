@@ -46,7 +46,9 @@ export function ProposalForm() {
   useEffect(() => {
     const isCurrentSelectionValid = fundingCalls.some((call) => call.id === values.fundingCallId);
     if (!isCurrentSelectionValid && fundingCalls[0]) {
-      setValues((current) => ({ ...current, fundingCallId: fundingCalls[0].id }));
+      void Promise.resolve().then(() => {
+        setValues((current) => ({ ...current, fundingCallId: fundingCalls[0].id }));
+      });
     }
   }, [fundingCalls, values.fundingCallId]);
 
@@ -123,7 +125,7 @@ export function ProposalForm() {
         <div className="mt-8 flex flex-col-reverse items-stretch gap-4 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="max-w-xl text-xs leading-6 text-white/45">
             {liveMode
-              ? "This will submit `submit_proposal` to the deployed contract. Only public references are sent — no files."
+              ? "This will submit `submit_proposal` to the deployed contract. Only public references are sent - no files."
               : "Connect a wallet to submit on-chain. Without one, this runs in demo mode."}
           </p>
           <Button type="submit" size="lg" className="w-full sm:w-auto">

@@ -39,5 +39,10 @@ export type ConsensusRecord = {
   keyStrengths: string[];
   keyRisks: string[];
   followUpQuestions: string[];
+  verifiedClaims: string[];
+  unsupportedClaims: string[];
+  contradictions: string[];
+  evidenceUrlsUsed: string[];
+  evidenceQualityScore: number;
   recommendationSummary: string;
 };

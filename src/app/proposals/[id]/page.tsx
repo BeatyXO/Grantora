@@ -19,21 +19,23 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
     if (!isLiveModeConfigured()) return;
 
     let cancelled = false;
-    setLoading(true);
+    void Promise.resolve().then(() => {
+      setLoading(true);
 
-    Promise.all([readProposal(id).catch(() => null), readFundingCalls().catch(() => null)])
-      .then(async ([liveProposal, liveCalls]) => {
-        if (cancelled) return;
-        if (liveProposal) {
-          setProposal(liveProposal);
-          setCall(liveCalls?.[liveProposal.fundingCallId] ?? getFundingCallById(liveProposal.fundingCallId));
-          const liveConsensus = await readConsensusAssessment(id).catch(() => null);
-          if (!cancelled) setConsensus(liveConsensus ?? undefined);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      Promise.all([readProposal(id).catch(() => null), readFundingCalls().catch(() => null)])
+        .then(async ([liveProposal, liveCalls]) => {
+          if (cancelled) return;
+          if (liveProposal) {
+            setProposal(liveProposal);
+            setCall(liveCalls?.[liveProposal.fundingCallId] ?? getFundingCallById(liveProposal.fundingCallId));
+            const liveConsensus = await readConsensusAssessment(id).catch(() => null);
+            if (!cancelled) setConsensus(liveConsensus ?? undefined);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    });
 
     return () => {
       cancelled = true;
@@ -44,7 +46,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
     return (
       <AppShell eyebrow="Proposal Detail" title="Proposal not found">
         <p className="text-sm text-white/60">
-          {loading ? "Loading from the contract…" : "No proposal exists with this ID in demo data or on-chain."}
+          {loading ? "Loading from the contract..." : "No proposal exists with this ID in demo data or on-chain."}
         </p>
       </AppShell>
     );

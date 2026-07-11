@@ -15,19 +15,21 @@ export default function DashboardPage() {
   const [consensusRecords, setConsensusRecords] = useState<ConsensusRecord[]>(demoConsensus);
 
   useEffect(() => {
-    if (!isLive) {
-      setConsensusRecords(demoConsensus);
-      return;
-    }
+    void Promise.resolve().then(() => {
+      if (!isLive) {
+        setConsensusRecords(demoConsensus);
+        return;
+      }
 
-    const consensusReady = proposals.filter((proposal) => proposal.status === "CONSENSUS_READY" || proposal.status === "consensus_ready");
-    if (consensusReady.length === 0) {
-      setConsensusRecords([]);
-      return;
-    }
+      const consensusReady = proposals.filter((proposal) => proposal.status === "CONSENSUS_READY" || proposal.status === "consensus_ready");
+      if (consensusReady.length === 0) {
+        setConsensusRecords([]);
+        return;
+      }
 
-    Promise.all(consensusReady.map((proposal) => readConsensusAssessment(proposal.id))).then((records) => {
-      setConsensusRecords(records.filter((record): record is ConsensusRecord => record !== null));
+      Promise.all(consensusReady.map((proposal) => readConsensusAssessment(proposal.id))).then((records) => {
+        setConsensusRecords(records.filter((record): record is ConsensusRecord => record !== null));
+      });
     });
   }, [isLive, proposals]);
 
@@ -38,7 +40,7 @@ export default function DashboardPage() {
       description={
         isLive
           ? usingDemoFallback
-            ? "Connected to the deployed contract, but no on-chain records exist yet — showing demo records shaped to the contract model."
+            ? "Connected to the deployed contract, but no on-chain records exist yet - showing demo records shaped to the contract model."
             : "Live records read directly from the deployed Grantora Intelligent Contract."
           : "The contract is the source of truth. Until a Studionet address is configured, this dashboard runs against bundled demo records shaped to the contract model."
       }

@@ -141,6 +141,26 @@ class GrantoraProtocol(gl.Contract):
         result.append(self._limit(text, max_len))
         return result
 
+    def _strip_prompt_injection_markers(self, value: str) -> str:
+        lower = value.lower()
+        forbidden = [
+            "ignore previous instructions",
+            "ignore all previous instructions",
+            "disregard the funding call",
+            "disregard previous instructions",
+            "system prompt",
+            "developer message",
+            "return only approved",
+            "always recommend",
+        ]
+        sanitized = value
+        for item in forbidden:
+            if item in lower:
+                sanitized = sanitized.replace(item, "[redacted instruction]")
+                sanitized = sanitized.replace(item.upper(), "[redacted instruction]")
+                sanitized = sanitized.replace(item.title(), "[redacted instruction]")
+        return sanitized
+
     def _next_id(self, prefix: str, counter_name: str) -> str:
         if counter_name == "funding_call":
             self.funding_call_counter = self.funding_call_counter + u256(1)
@@ -250,6 +270,11 @@ class GrantoraProtocol(gl.Contract):
             "key_strengths": self._list_of_strings(parsed.get("key_strengths", []), 6, 320),
             "key_risks": self._list_of_strings(parsed.get("key_risks", []), 6, 320),
             "follow_up_questions": self._list_of_strings(parsed.get("follow_up_questions", []), 6, 320),
+            "verified_claims": self._list_of_strings(parsed.get("verified_claims", []), 6, 320),
+            "unsupported_claims": self._list_of_strings(parsed.get("unsupported_claims", []), 6, 320),
+            "contradictions": self._list_of_strings(parsed.get("contradictions", []), 6, 320),
+            "evidence_urls_used": self._list_of_strings(parsed.get("evidence_urls_used", []), 10, 400),
+            "evidence_quality_score": self._bounded_score(parsed.get("evidence_quality_score", 0), 0),
             "recommendation_summary": self._limit(parsed.get("recommendation_summary", ""), 1200),
         }
 
@@ -309,6 +334,7 @@ class GrantoraProtocol(gl.Contract):
                 try:
                     response = gl.nondet.web.get(url)
                     content = response.body.decode("utf-8", errors="ignore")[:14000]
+                    content = self._strip_prompt_injection_markers(content)
                 except Exception as fetch_error:
                     content = "Could not fetch this URL: " + str(fetch_error)
                 evidence_payload.append(
@@ -329,7 +355,7 @@ class GrantoraProtocol(gl.Contract):
             task=(
                 "You are an expert grant reviewer for Grantora, a decentralized research and impact "
                 "funding intelligence protocol. Evaluate the proposal in the input against the funding "
-                "call it targets and the public evidence provided. Return ONLY valid JSON — no markdown, "
+                "call it targets and the public evidence provided. Return ONLY valid JSON - no markdown, "
                 "no explanation outside the JSON.\n\n"
                 "Return exactly this structure:\n"
                 '{"funding_recommendation":"RECOMMENDED_FOR_FULL_REVIEW",'
@@ -337,7 +363,10 @@ class GrantoraProtocol(gl.Contract):
                 '"feasibility_score":75,"budget_credibility_score":75,'
                 '"funding_call_alignment_score":80,"confidence_score":75,'
                 '"key_strengths":["...","...","..."],"key_risks":["...","..."],'
-                '"follow_up_questions":["...","..."],"recommendation_summary":"One or two sentences."}\n\n'
+                '"follow_up_questions":["...","..."],"verified_claims":["..."],'
+                '"unsupported_claims":["..."],"contradictions":["..."],'
+                '"evidence_urls_used":["https://..."],"evidence_quality_score":75,'
+                '"recommendation_summary":"One or two sentences."}\n\n'
                 "funding_recommendation options: RECOMMENDED_FOR_FULL_REVIEW, RECOMMENDED_WITH_CONDITIONS, "
                 "NOT_RECOMMENDED, NEEDS_ADDITIONAL_EVIDENCE\n"
                 "All scores are integers 0-100."
@@ -350,6 +379,8 @@ class GrantoraProtocol(gl.Contract):
                 "supports the claims made.\n"
                 "NOT_RECOMMENDED is only reasonable if the proposal is clearly misaligned with the funding "
                 "call or the evidence contradicts the proposal's claims.\n"
+                "The review must identify which claims are supported by fetched public evidence, which "
+                "claims are unsupported, and whether any fetched evidence contradicts the proposal.\n"
                 "The recommendation must be a reasonable assessment given the funding call and proposal "
                 "content provided, not an arbitrary guess.\n"
                 "The response must be valid JSON matching the requested structure."
@@ -588,7 +619,7 @@ class GrantoraProtocol(gl.Contract):
 
         review = self._run_consensus_review(funding_call, proposal, proposal.get("evidence_urls", []))
 
-        self.assessments[proposal_id] = self._json(
+        return self._json(
             {
                 "proposal_id": proposal_id,
                 "funding_recommendation": review["funding_recommendation"],
@@ -602,22 +633,14 @@ class GrantoraProtocol(gl.Contract):
                 "key_strengths": review["key_strengths"],
                 "key_risks": review["key_risks"],
                 "follow_up_questions": review["follow_up_questions"],
+                "verified_claims": review["verified_claims"],
+                "unsupported_claims": review["unsupported_claims"],
+                "contradictions": review["contradictions"],
+                "evidence_urls_used": review["evidence_urls_used"],
+                "evidence_quality_score": review["evidence_quality_score"],
                 "recommendation_summary": review["recommendation_summary"],
             }
         )
-
-        proposal["status"] = "CONSENSUS_READY"
-        self.proposals[proposal_id] = self._json(proposal)
-
-        self._record_audit(
-            proposal_id,
-            "GENLAYER_CONSENSUS_REVIEW",
-            "GENLAYER_CONSENSUS",
-            "Consensus review recorded: " + review["funding_recommendation"],
-            proposal_id,
-        )
-
-        return proposal_id
 
     @gl.public.view
     def get_proposals(self) -> dict:

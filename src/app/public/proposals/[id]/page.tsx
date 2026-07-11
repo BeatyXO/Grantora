@@ -16,16 +16,18 @@ export default function PublicProposalPage({ params }: { params: Promise<{ id: s
     if (!isLiveModeConfigured()) return;
 
     let cancelled = false;
-    setLoading(true);
-    Promise.all([readProposal(id).catch(() => null), readConsensusAssessment(id).catch(() => null)])
-      .then(([liveProposal, liveConsensus]) => {
-        if (cancelled) return;
-        if (liveProposal) setProposal(liveProposal);
-        setConsensus(liveConsensus ?? undefined);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    void Promise.resolve().then(() => {
+      setLoading(true);
+      Promise.all([readProposal(id).catch(() => null), readConsensusAssessment(id).catch(() => null)])
+        .then(([liveProposal, liveConsensus]) => {
+          if (cancelled) return;
+          if (liveProposal) setProposal(liveProposal);
+          setConsensus(liveConsensus ?? undefined);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    });
 
     return () => {
       cancelled = true;
@@ -36,7 +38,7 @@ export default function PublicProposalPage({ params }: { params: Promise<{ id: s
     return (
       <AppShell eyebrow="Public Proposal Page" title="Proposal not found">
         <p className="text-sm text-white/60">
-          {loading ? "Loading from the contract…" : "No proposal exists with this ID in demo data or on-chain."}
+          {loading ? "Loading from the contract..." : "No proposal exists with this ID in demo data or on-chain."}
         </p>
       </AppShell>
     );

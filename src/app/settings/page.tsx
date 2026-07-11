@@ -14,7 +14,7 @@ export default function SettingsPage() {
           <div className="mt-4 space-y-3 rounded-2xl bg-black/20 p-4 font-mono text-sm text-white/76">
             <p>`NEXT_PUBLIC_GENLAYER_NETWORK=studionet`</p>
             <p>`NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api`</p>
-            <p>`NEXT_PUBLIC_GRANTORA_CONTRACT_ADDRESS=0x...`</p>
+            <p>`NEXT_PUBLIC_GRANTORA_CONTRACT_ADDRESS=0x2F880A3D01944E6c876668df953C84468500E8D6`</p>
           </div>
           <p className="mt-4 text-sm leading-7 text-white/68">
             If the contract address is omitted, the app renders against bundled demo data while
