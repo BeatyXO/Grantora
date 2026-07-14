@@ -17,7 +17,7 @@ The repo has two parts:
 2. An applicant **submits a proposal** against that call, including public evidence URLs such as GitHub repos, publications, or project pages.
 3. Anyone with permission can **trigger a review**. The contract fetches each evidence URL inside a non-deterministic block and asks GenLayer validators to reach consensus on a structured assessment (`gl.eq_principle.prompt_non_comparative`).
 4. The review checks scientific merit, novelty, societal impact, feasibility, budget credibility, funding-call alignment, confidence, evidence quality, verified claims, unsupported claims, and contradictions.
-5. The review method returns the evidence-grounded consensus assessment without performing forbidden storage writes after the non-deterministic consensus call.
+5. After consensus returns, deterministic contract code persists the canonical assessment, advances the proposal to `CONSENSUS_READY`, and records a review audit event.
 
 Every write goes through the connected wallet directly to the deployed contract; every read comes from the contract's public getters. There is no backend database.
 
@@ -58,7 +58,7 @@ Copy `.env.example` to `.env.local` and set:
 |---|---|
 | `NEXT_PUBLIC_GENLAYER_NETWORK` | `studionet` |
 | `NEXT_PUBLIC_GENLAYER_RPC_URL` | `https://studio.genlayer.com/api` |
-| `NEXT_PUBLIC_GRANTORA_CONTRACT_ADDRESS` | `0x2F880A3D01944E6c876668df953C84468500E8D6` |
+| `NEXT_PUBLIC_GRANTORA_CONTRACT_ADDRESS` | `0xa30353d31b69e4ab23F82C37601F56bd670cfCc2` |
 
 If `NEXT_PUBLIC_GRANTORA_CONTRACT_ADDRESS` is unset, the app falls back to bundled demo data (empty by default) instead of failing.
 
@@ -81,8 +81,8 @@ After deploying, copy the resulting contract address into `NEXT_PUBLIC_GRANTORA_
 | `get_proposals()` / `get_proposal(id)` | List / fetch proposals |
 | `get_proposals_for_funding_call(id)` | Proposals under a specific call |
 | `get_proposals_for_owner(address)` | Proposals submitted by a given address |
-| `request_review(proposal_id)` | Trigger and return the AI consensus review |
-| `get_consensus_assessment(proposal_id)` | Fetch a stored assessment if one was recorded by a compatible deployment flow |
+| `request_review(proposal_id)` | Trigger, persist, and return the AI consensus review |
+| `get_consensus_assessment(proposal_id)` | Fetch the persisted canonical assessment |
 | `get_audit_trail(proposal_id)` | Full audit log for a proposal |
 | `pause()` / `unpause()` / `transfer_ownership(address)` | Owner-only contract administration |
 
@@ -92,4 +92,4 @@ After deploying, copy the resulting contract address into `NEXT_PUBLIC_GRANTORA_
 - Fetched evidence content is sanitized for prompt-injection markers before it is included in the consensus prompt.
 - AI-produced scores are normalized to bounded integers and clamped by deterministic thresholds before a funding recommendation is returned.
 - The consensus review output includes verified claims, unsupported claims, contradictions, evidence URLs used, and an evidence quality score.
-- The contract avoids storage writes after the non-deterministic consensus call.
+- The contract performs storage writes only after the non-deterministic consensus call has returned an agreed result.

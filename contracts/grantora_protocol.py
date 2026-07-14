@@ -619,28 +619,42 @@ class GrantoraProtocol(gl.Contract):
 
         review = self._run_consensus_review(funding_call, proposal, proposal.get("evidence_urls", []))
 
-        return self._json(
-            {
-                "proposal_id": proposal_id,
-                "funding_recommendation": review["funding_recommendation"],
-                "scientific_merit_score": review["scientific_merit_score"],
-                "novelty_score": review["novelty_score"],
-                "societal_impact_score": review["societal_impact_score"],
-                "feasibility_score": review["feasibility_score"],
-                "budget_credibility_score": review["budget_credibility_score"],
-                "funding_call_alignment_score": review["funding_call_alignment_score"],
-                "confidence_score": review["confidence_score"],
-                "key_strengths": review["key_strengths"],
-                "key_risks": review["key_risks"],
-                "follow_up_questions": review["follow_up_questions"],
-                "verified_claims": review["verified_claims"],
-                "unsupported_claims": review["unsupported_claims"],
-                "contradictions": review["contradictions"],
-                "evidence_urls_used": review["evidence_urls_used"],
-                "evidence_quality_score": review["evidence_quality_score"],
-                "recommendation_summary": review["recommendation_summary"],
-            }
+        # `review` is the consensus-agreed result returned from the nondeterministic
+        # block above. All state changes happen here, in deterministic contract
+        # execution, so every validator persists the same canonical assessment.
+        assessment = {
+            "proposal_id": proposal_id,
+            "funding_recommendation": review["funding_recommendation"],
+            "scientific_merit_score": review["scientific_merit_score"],
+            "novelty_score": review["novelty_score"],
+            "societal_impact_score": review["societal_impact_score"],
+            "feasibility_score": review["feasibility_score"],
+            "budget_credibility_score": review["budget_credibility_score"],
+            "funding_call_alignment_score": review["funding_call_alignment_score"],
+            "confidence_score": review["confidence_score"],
+            "key_strengths": review["key_strengths"],
+            "key_risks": review["key_risks"],
+            "follow_up_questions": review["follow_up_questions"],
+            "verified_claims": review["verified_claims"],
+            "unsupported_claims": review["unsupported_claims"],
+            "contradictions": review["contradictions"],
+            "evidence_urls_used": review["evidence_urls_used"],
+            "evidence_quality_score": review["evidence_quality_score"],
+            "recommendation_summary": review["recommendation_summary"],
+        }
+
+        self.assessments[proposal_id] = self._json(assessment)
+        proposal["status"] = "CONSENSUS_READY"
+        self.proposals[proposal_id] = self._json(proposal)
+        self._record_audit(
+            proposal_id,
+            "CONSENSUS_REVIEW_RECORDED",
+            self._sender(),
+            "Consensus review recorded: " + assessment["funding_recommendation"],
+            proposal_id,
         )
+
+        return self._json(assessment)
 
     @gl.public.view
     def get_proposals(self) -> dict:

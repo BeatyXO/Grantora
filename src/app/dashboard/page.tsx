@@ -40,8 +40,8 @@ export default function DashboardPage() {
       description={
         isLive
           ? usingDemoFallback
-            ? "Connected to the deployed contract, but no on-chain records exist yet - showing demo records shaped to the contract model."
-            : "Live records read directly from the deployed Grantora Intelligent Contract."
+            ? "Demo fallback is active."
+            : "Live records read directly from the deployed Grantora Intelligent Contract. Empty sections mean the contract has no matching records."
           : "The contract is the source of truth. Until a Studionet address is configured, this dashboard runs against bundled demo records shaped to the contract model."
       }
     >

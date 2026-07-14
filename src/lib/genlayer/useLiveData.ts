@@ -27,14 +27,16 @@ export function useGrantoraLiveData() {
       const [callsResult, proposalsResult] = await Promise.all([readFundingCalls(), readProposals()]);
       const callsList = Object.values(callsResult);
       const proposalsList = Object.values(proposalsResult);
-      setFundingCalls(callsList.length > 0 ? callsList : demoFundingCalls);
-      setProposals(proposalsList.length > 0 ? proposalsList : demoProposals);
-      setUsingDemoFallback(callsList.length === 0 && proposalsList.length === 0);
+      // A configured contract is always the source of truth, including when it
+      // has no records yet. Never substitute demo records for a live response.
+      setFundingCalls(callsList);
+      setProposals(proposalsList);
+      setUsingDemoFallback(false);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Failed to read from the contract.");
-      setFundingCalls(demoFundingCalls);
-      setProposals(demoProposals);
-      setUsingDemoFallback(true);
+      setFundingCalls([]);
+      setProposals([]);
+      setUsingDemoFallback(false);
     } finally {
       setLoading(false);
     }

@@ -32,7 +32,7 @@ export function ReviewActionCard({
         setState({
           status: "success",
           hash: receipt.hash,
-          message: "Consensus review accepted. The contract returns the evidence-grounded assessment without post-consensus storage writes.",
+          message: "Consensus review accepted and persisted. The proposal status, canonical assessment, and audit event are now available from the contract.",
         });
         onReviewed?.();
       } else {
