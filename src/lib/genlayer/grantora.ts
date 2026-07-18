@@ -37,6 +37,11 @@ export type NewProposalInput = {
   evidenceUrls: string[];
 };
 
+export type ConsensusAssessmentReadResult =
+  | { status: "available"; record: ConsensusRecord }
+  | { status: "missing" }
+  | { status: "unavailable"; message: string };
+
 function fakeHash(seed: string) {
   const normalized = seed.padEnd(64, "0").slice(0, 64);
   return `0x${normalized}`;
@@ -146,18 +151,50 @@ export async function readProposal(proposalId: string): Promise<Proposal> {
   return toProposal(raw as Parameters<typeof toProposal>[0]);
 }
 
-export async function readConsensusAssessment(proposalId: string): Promise<ConsensusRecord | null> {
-  const address = requireContractAddress();
-  const client = createGrantoraReadClient();
+function extractReadErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return "Live assessment data is unavailable.";
+}
+
+function isMissingConsensusAssessment(error: unknown): boolean {
+  return /no consensus assessment found/i.test(extractReadErrorMessage(error));
+}
+
+function isConsensusReadyStatus(status: string | undefined): boolean {
+  return status?.toUpperCase() === "CONSENSUS_READY";
+}
+
+export async function readConsensusAssessment(proposalId: string): Promise<ConsensusAssessmentReadResult> {
   try {
+    const address = requireContractAddress();
+    const client = createGrantoraReadClient();
     const raw = await client.readContract({
       address,
       functionName: "get_consensus_assessment",
       args: [proposalId],
     });
-    return toConsensusRecord(raw as Parameters<typeof toConsensusRecord>[0]);
-  } catch {
-    return null;
+    return { status: "available", record: toConsensusRecord(raw as Parameters<typeof toConsensusRecord>[0]) };
+  } catch (error) {
+    if (isMissingConsensusAssessment(error)) {
+      return { status: "missing" };
+    }
+
+    try {
+      const proposal = await readProposal(proposalId);
+      if (!isConsensusReadyStatus(proposal.status)) {
+        return { status: "missing" };
+      }
+    } catch {
+      // Keep the original assessment-read failure below. A failed proposal fallback
+      // means live data is unavailable, not that the assessment is absent.
+    }
+
+    return { status: "unavailable", message: extractReadErrorMessage(error) };
   }
 }
 

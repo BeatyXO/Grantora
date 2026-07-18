@@ -10,6 +10,7 @@ export default function PublicProposalPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const [proposal, setProposal] = useState<Proposal | undefined>(() => getProposalById(id));
   const [consensus, setConsensus] = useState<ConsensusRecord | undefined>(() => getConsensusByProposalId(id));
+  const [consensusUnavailable, setConsensusUnavailable] = useState<string | null>(null);
   const [loading, setLoading] = useState(isLiveModeConfigured());
 
   useEffect(() => {
@@ -18,11 +19,25 @@ export default function PublicProposalPage({ params }: { params: Promise<{ id: s
     let cancelled = false;
     void Promise.resolve().then(() => {
       setLoading(true);
-      Promise.all([readProposal(id).catch(() => null), readConsensusAssessment(id).catch(() => null)])
-        .then(([liveProposal, liveConsensus]) => {
+      setConsensusUnavailable(null);
+      Promise.all([readProposal(id).catch(() => null), readConsensusAssessment(id)])
+        .then(([liveProposal, consensusResult]) => {
           if (cancelled) return;
           if (liveProposal) setProposal(liveProposal);
-          setConsensus(liveConsensus ?? undefined);
+          if (consensusResult.status === "available") {
+            setConsensus(consensusResult.record);
+            return;
+          }
+          setConsensus(undefined);
+          if (consensusResult.status === "unavailable") {
+            setConsensusUnavailable(consensusResult.message);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setConsensus(undefined);
+            setConsensusUnavailable(error instanceof Error ? error.message : "Live assessment data is unavailable.");
+          }
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -96,6 +111,11 @@ export default function PublicProposalPage({ params }: { params: Promise<{ id: s
               <h2 className="font-display text-2xl text-white">Public Consensus Snapshot</h2>
               <p className="mt-4 text-white">{consensus.fundingRecommendation}</p>
               <p className="mt-2 text-sm text-white/68">{consensus.recommendationSummary}</p>
+            </div>
+          ) : consensusUnavailable ? (
+            <div className="rounded-[1.75rem] border border-amber-300/30 bg-amber-400/10 p-6">
+              <h2 className="font-display text-2xl text-white">Consensus Snapshot Unavailable</h2>
+              <p className="mt-3 text-sm leading-7 text-amber-100/85">{consensusUnavailable}</p>
             </div>
           ) : null}
         </aside>

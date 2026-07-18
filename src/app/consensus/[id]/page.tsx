@@ -21,16 +21,29 @@ export default function ConsensusPage({ params }: { params: Promise<{ id: string
   const { id } = use(params);
   const [proposal, setProposal] = useState<Proposal | undefined>(() => getProposalById(id));
   const [consensus, setConsensus] = useState<ConsensusRecord | undefined>(() => getConsensusByProposalId(id));
+  const [consensusUnavailable, setConsensusUnavailable] = useState<string | null>(null);
   const [loading, setLoading] = useState(isLiveModeConfigured());
 
   const refresh = useCallback(() => {
     if (!isLiveModeConfigured()) return;
 
     setLoading(true);
-    Promise.all([readProposal(id).catch(() => null), readConsensusAssessment(id).catch(() => null)])
-      .then(([liveProposal, liveConsensus]) => {
+    setConsensusUnavailable(null);
+    Promise.all([readProposal(id).catch(() => null), readConsensusAssessment(id)])
+      .then(([liveProposal, consensusResult]) => {
         if (liveProposal) setProposal(liveProposal);
-        setConsensus(liveConsensus ?? undefined);
+        if (consensusResult.status === "available") {
+          setConsensus(consensusResult.record);
+          return;
+        }
+        setConsensus(undefined);
+        if (consensusResult.status === "unavailable") {
+          setConsensusUnavailable(consensusResult.message);
+        }
+      })
+      .catch((error) => {
+        setConsensus(undefined);
+        setConsensusUnavailable(error instanceof Error ? error.message : "Live assessment data is unavailable.");
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -54,9 +67,18 @@ export default function ConsensusPage({ params }: { params: Promise<{ id: string
       <AppShell
         eyebrow="Consensus Viewer"
         title={`AI review for ${proposal.title}`}
-        description="No consensus assessment has been recorded for this proposal yet."
+        description={
+          consensusUnavailable
+            ? "Live consensus assessment data is currently unavailable."
+            : "No consensus assessment has been recorded for this proposal yet."
+        }
       >
         <section className="mx-auto max-w-2xl">
+          {consensusUnavailable ? (
+            <p className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4 text-sm text-amber-100/85">
+              {consensusUnavailable}
+            </p>
+          ) : null}
           <ReviewActionCard proposalId={proposal.id} onReviewed={refresh} loading={loading} prominent />
         </section>
       </AppShell>

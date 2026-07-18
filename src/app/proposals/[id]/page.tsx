@@ -13,6 +13,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
     proposal ? getFundingCallById(proposal.fundingCallId) : undefined,
   );
   const [consensus, setConsensus] = useState<ConsensusRecord | undefined>(() => getConsensusByProposalId(id));
+  const [consensusUnavailable, setConsensusUnavailable] = useState<string | null>(null);
   const [loading, setLoading] = useState(isLiveModeConfigured());
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
     let cancelled = false;
     void Promise.resolve().then(() => {
       setLoading(true);
+      setConsensusUnavailable(null);
 
       Promise.all([readProposal(id).catch(() => null), readFundingCalls().catch(() => null)])
         .then(async ([liveProposal, liveCalls]) => {
@@ -28,8 +30,22 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
           if (liveProposal) {
             setProposal(liveProposal);
             setCall(liveCalls?.[liveProposal.fundingCallId] ?? getFundingCallById(liveProposal.fundingCallId));
-            const liveConsensus = await readConsensusAssessment(id).catch(() => null);
-            if (!cancelled) setConsensus(liveConsensus ?? undefined);
+            const consensusResult = await readConsensusAssessment(id);
+            if (cancelled) return;
+            if (consensusResult.status === "available") {
+              setConsensus(consensusResult.record);
+            } else {
+              setConsensus(undefined);
+              if (consensusResult.status === "unavailable") {
+                setConsensusUnavailable(consensusResult.message);
+              }
+            }
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setConsensus(undefined);
+            setConsensusUnavailable(error instanceof Error ? error.message : "Live assessment data is unavailable.");
           }
         })
         .finally(() => {
@@ -112,6 +128,11 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
               <h2 className="font-display text-2xl text-white">Consensus Summary</h2>
               <p className="mt-4 text-white">{consensus.fundingRecommendation}</p>
               <p className="mt-2 text-sm leading-7 text-white/68">{consensus.recommendationSummary}</p>
+            </div>
+          ) : consensusUnavailable ? (
+            <div className="rounded-[1.75rem] border border-amber-300/30 bg-amber-400/10 p-6">
+              <h2 className="font-display text-2xl text-white">Consensus Summary Unavailable</h2>
+              <p className="mt-3 text-sm leading-7 text-amber-100/85">{consensusUnavailable}</p>
             </div>
           ) : null}
         </aside>

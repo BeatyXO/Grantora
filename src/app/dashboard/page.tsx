@@ -13,23 +13,36 @@ import { ConsensusRecord } from "@/lib/types";
 export default function DashboardPage() {
   const { fundingCalls, proposals, isLive, usingDemoFallback, error } = useGrantoraLiveData();
   const [consensusRecords, setConsensusRecords] = useState<ConsensusRecord[]>(demoConsensus);
+  const [consensusUnavailable, setConsensusUnavailable] = useState(false);
 
   useEffect(() => {
     void Promise.resolve().then(() => {
       if (!isLive) {
         setConsensusRecords(demoConsensus);
+        setConsensusUnavailable(false);
         return;
       }
 
       const consensusReady = proposals.filter((proposal) => proposal.status === "CONSENSUS_READY" || proposal.status === "consensus_ready");
       if (consensusReady.length === 0) {
         setConsensusRecords([]);
+        setConsensusUnavailable(false);
         return;
       }
 
-      Promise.all(consensusReady.map((proposal) => readConsensusAssessment(proposal.id))).then((records) => {
-        setConsensusRecords(records.filter((record): record is ConsensusRecord => record !== null));
-      });
+      Promise.all(consensusReady.map((proposal) => readConsensusAssessment(proposal.id)))
+        .then((records) => {
+          setConsensusRecords(
+            records
+              .filter((result) => result.status === "available")
+              .map((result) => result.record),
+          );
+          setConsensusUnavailable(records.some((result) => result.status === "unavailable"));
+        })
+        .catch(() => {
+          setConsensusRecords([]);
+          setConsensusUnavailable(true);
+        });
     });
   }, [isLive, proposals]);
 
@@ -117,8 +130,15 @@ export default function DashboardPage() {
           <div className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6">
             <h2 className="font-display text-2xl text-white">Consensus Queue</h2>
             <div className="mt-4 space-y-4">
+              {consensusUnavailable ? (
+                <p className="rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4 text-sm text-amber-100/85">
+                  Some live consensus assessment data is currently unavailable.
+                </p>
+              ) : null}
               {consensusRecords.length === 0 ? (
-                <p className="text-sm text-white/50">No consensus assessments yet.</p>
+                <p className="text-sm text-white/50">
+                  {consensusUnavailable ? "No consensus assessments could be loaded right now." : "No consensus assessments yet."}
+                </p>
               ) : (
                 consensusRecords.map((record) => (
                   <div key={record.proposalId} className="glow-hover rounded-2xl border border-transparent bg-black/20 p-4">
